@@ -5,7 +5,6 @@ import os
 from typing import Dict, List, Optional
 from ..engine.curves import generate_tone_curve
 from ..engine.icc_builder import ICCBuilder
-from ..engine.window_watcher import DEFAULT_GAME_PATTERNS
 
 
 DEFAULT_CONFIG_DIR = os.path.expanduser("~/.config/linuxraider")
@@ -48,7 +47,6 @@ class ProfileManager:
         """Load persistent application settings with defaults."""
         defaults = {
             "auto_detect_enabled": True,
-            "auto_detect_patterns": DEFAULT_GAME_PATTERNS,
         }
         if not os.path.exists(self.settings_path):
             return defaults

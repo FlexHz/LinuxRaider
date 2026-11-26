@@ -1,26 +1,40 @@
 # LinuxRaider 🎮
 
-Herramienta de post-procesamiento digital de curvas de color, brillo, gamma, contraste y ecualización de sombras (*Shadow Boost / Black Equalizer*) para juegos en Linux (optimizada para **CachyOS / KDE Plasma 6 Wayland**).
-
-Inspirado en *BrightRaider*, utiliza el pipeline de gestión de color por GPU nativo de KDE Plasma 6 a través de perfiles ICC generados algorítmicamente con `liblcms2` y aplicados mediante `kscreen-doctor`.
+**LinuxRaider** es una utilidad de post-procesamiento visual por GPU para juegos en Linux (optimizada para **CachyOS / KDE Plasma 6 Wayland**). Permite mejorar la visibilidad en zonas oscuras, cuevas e interiores —como en *ARC Raiders*— mediante curvas tonales aplicadas con perfiles ICC nativos de KWin, **sin impacto en FPS, sin latencia adicional y sin tocar los archivos o memoria del juego**.
 
 ---
 
-## ⚡ Características
+## 🤔 ¿Qué problema resuelve?
 
-* **0 FPS de impacto:** La curva tonal (TRC) se compila en un perfil ICC y la GPU la aplica directamente en su shader de salida.
-* **0 ms de latencia (*input lag*):** No añade colas de cuadros ni intercepta el proceso del juego.
-* **Seguro contra Anticheat:** Opera a nivel de compositor gráfico (KWin), completamente fuera del proceso del juego.
-* **Interfaz gráfica + Bandeja del sistema (PyQt6):** Sliders en tiempo real para Brillo, Shadow Boost, Gamma y Contraste, con perfiles guardables.
-* **Detección automática de ventana (KWin Wayland):** Activa el modo juego automáticamente cuando *ARC Raiders* (o las ventanas configuradas) recibe el foco del sistema y vuelve a sRGB estándar al hacer Alt-Tab.
-* **Control por CLI y atajos de teclado:** Alterna o aplica perfiles desde consola o atajos globales de KDE.
+Muchos juegos competitivos o de extracción tienen interiores muy oscuros donde es difícil distinguir detalles o enemigos. Subir el brillo físico del monitor lava toda la imagen, y usar inyectores o *overlays* puede afectar el rendimiento o generar incompatibilidades con sistemas anticheat.
+
+**LinuxRaider** resuelve esto usando el propio compositor gráfico de KDE Plasma 6 (**KWin**):
+- Compila una curva de respuesta tonal (TRC) en un perfil **ICC** usando `liblcms2`.
+- Le indica a KWin que aplique ese perfil en el *shader* de salida de la GPU mediante `kscreen-doctor`.
+- Cuando sales del juego o desactivas el modo juego, restaura el perfil **sRGB estándar** al instante.
+
+---
+
+## ⚡ Características principales
+
+- **0 FPS de impacto y 0 ms de *input lag*:** el cálculo de la curva se compila una vez y la GPU aplica la tabla de color directamente en el compositor.
+- **Seguro frente a Anticheat:** funciona completamente fuera del proceso del juego, a nivel de pantalla/compositor.
+- **Interfaz gráfica en PyQt6 + Bandeja del sistema:**
+  - Botón rápido **Activar / Desactivar Modo Juego** que conserva tu perfil y ajustes seleccionados al desactivar.
+  - Sliders en tiempo real para **Brillo**, **Shadow Boost**, **Curva Gamma** y **Contraste**.
+  - Guardado y selección de perfiles personalizados.
+- **Detección automática de ventana (KWin Wayland):** detecta en tiempo real cuándo el juego tiene el foco del sistema (por defecto configurado para *ARC Raiders*) y desactiva el filtro automáticamente al hacer `Alt+Tab`.
+- **CLI y atajos globales:** permite controlar perfiles desde consola o asignarlos a una tecla en KDE.
 
 ---
 
 ## 📋 Requisitos
 
-* **Sistema:** KDE Plasma 6 en Wayland (`kscreen-doctor` y `org.kde.KWin /Scripting`)
-* **Bibliotecas:** Python 3.10+, `PyQt6` (`pip install -r requirements.txt` o paquete del sistema `python-pyqt6`), `liblcms2` (`lcms2`)
+- **Entorno:** Linux con **KDE Plasma 6 en Wayland** (`kscreen-doctor` y servicio D-Bus `org.kde.KWin /Scripting`).
+- **Python:** 3.10 o superior.
+- **Dependencias:**
+  - `PyQt6` (con soporte `QtDBus`, p. ej. `pip install -r requirements.txt` o paquete `python-pyqt6`).
+  - `liblcms2` (LittleCMS 2, p. ej. paquete `lcms2`).
 
 ---
 
@@ -30,51 +44,65 @@ Inspirado en *BrightRaider*, utiliza el pipeline de gestión de color por GPU na
 git clone https://github.com/<tu-usuario>/LinuxRaider.git
 cd LinuxRaider
 pip install -r requirements.txt
-chmod +x install.sh && ./install.sh
+./install.sh
 ```
 
-El script `install.sh` crea el enlace simbólico en `~/.local/bin/linuxraider`, instala el ícono y registra el lanzador `.desktop` en tu menú de aplicaciones.
+El script [`install.sh`](install.sh) crea el comando `~/.local/bin/linuxraider`, instala el ícono de la aplicación y registra el lanzador de escritorio en `~/.local/share/applications/linuxraider.desktop`.
 
 ---
 
-## 🚀 Uso Rápido (GUI y CLI)
+## 🚀 Uso rápido
 
+### Interfaz gráfica (GUI)
 ```bash
-# Abrir interfaz gráfica
 linuxraider
+```
+Al cerrar la ventana, la aplicación sigue ejecutándose minimizada en la bandeja del sistema (*System Tray*).
 
-# Ver estado actual de la pantalla y el perfil activo
-linuxraider status
-
-# Listar perfiles disponibles
-linuxraider list
-
-# Probar el perfil 'night_vision' durante 4 segundos (vuelve solo a sRGB)
-linuxraider test night_vision
-
-# Activar o desactivar con un solo comando (ideal para atajos de teclado)
-linuxraider toggle
-
-# Aplicar un perfil específico
-linuxraider apply night_vision
-linuxraider apply neutral
-
-# Restablecer la pantalla al modo normal
-linuxraider reset
-
-# Probar ajustes personalizados al vuelo
-linuxraider quick --boost 0.7 --gamma 1.25 --contrast 1.05
+### Línea de comandos (CLI)
+```bash
+linuxraider status                     # Ver monitor activo y si hay perfil ICC aplicado
+linuxraider list                       # Listar perfiles guardados
+linuxraider toggle                     # Alternar entre 'night_vision' y sRGB estándar
+linuxraider apply night_vision         # Aplicar un perfil específico
+linuxraider test night_vision -d 4     # Probar un perfil 4 segundos y volver a sRGB
+linuxraider reset                      # Restaurar la pantalla a sRGB estándar
 ```
 
 ---
 
-## ⌨️ Configurar atajo de teclado en KDE Plasma 6
+## 📚 Documentación adicional
 
-1. Abre **Preferencias del Sistema** en KDE.
-2. Ve a **Atajos** -> **Atajos de teclado**.
-3. Haz clic en **Añadir nuevo** -> **Comando o script**.
-4. En comando, escribe:
-   ```bash
-   linuxraider toggle
-   ```
-5. Asígnale la tecla que prefieras (por ejemplo: `F1`, `Pause`, o `Meta + B`) y haz clic en **Aplicar**.
+- 📖 **[Guía de uso y configuración](docs/usage.md):** explicación de cada slider, detección automática de ventanas, referencia completa del CLI, atajos en KDE y solución de problemas.
+- ⚙️ **[Arquitectura técnica](docs/architecture.md):** cómo funciona la curva matemática de *Shadow Boost*, el compilador ICC con LittleCMS, el puente con `kscreen-doctor` y el watcher D-Bus de KWin.
+
+---
+
+## 📁 Estructura del proyecto
+
+```text
+LinuxRaider/
+├── main.py                         # Punto de entrada (GUI o CLI según argumentos)
+├── install.sh                      # Instalador local (CLI, ícono y .desktop)
+├── requirements.txt                # Dependencias Python (PyQt6)
+├── docs/                           # Documentación detallada de uso y arquitectura
+├── resources/
+│   └── linuxraider.png             # Ícono oficial del proyecto
+└── linuxraider/
+    ├── cli.py                      # Subcomandos de línea de comandos
+    ├── core/
+    │   └── profiles.py             # Carga/guardado de perfiles y settings.json
+    ├── engine/
+    │   ├── curves.py               # Generación monotónica de curvas tonales
+    │   ├── icc_builder.py          # Compilación de perfiles ICC vía liblcms2
+    │   ├── display_manager.py      # Control de salidas de pantalla con kscreen-doctor
+    │   └── window_watcher.py       # Detección de foco en KWin Wayland vía D-Bus
+    └── ui/
+        └── main_window.py          # Ventana principal PyQt6 y bandeja del sistema
+```
+
+---
+
+## 📄 Licencia
+
+Distribuido bajo la licencia [MIT](LICENSE).

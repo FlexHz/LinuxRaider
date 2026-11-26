@@ -2,36 +2,22 @@
 
 import os
 import tempfile
-from typing import List, Optional
+from typing import Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection, QDBusInterface, QDBusMessage
 
-DEFAULT_GAME_PATTERNS = "ARC Raiders, steam_app_1808500, PioneerGame"
+GAME_WINDOW_TITLE = "ARC Raiders"
 
 
-def parse_patterns(patterns_text: str) -> List[str]:
-    """Parse a comma-separated pattern string into normalized lowercase tokens."""
-    return [token.strip().lower() for token in patterns_text.split(",") if token.strip()]
-
-
-def window_matches_patterns(
+def is_game_window(
     caption: str,
-    resource_class: str,
-    resource_name: str,
-    desktop_file: str,
-    patterns: List[str],
+    resource_class: str = "",
+    resource_name: str = "",
+    desktop_file: str = "",
 ) -> bool:
-    """Return True if any pattern matches one of the active window's identifiers."""
-    if not patterns:
-        return False
-    fields = [
-        (caption or "").lower(),
-        (resource_class or "").lower(),
-        (resource_name or "").lower(),
-        (desktop_file or "").lower(),
-    ]
-    return any(pattern in field for pattern in patterns for field in fields if field)
+    """Return True if the active window title exactly matches the game window."""
+    return (caption or "").strip().lower() == GAME_WINDOW_TITLE.lower()
 
 
 class KWinWindowWatcher(QObject):

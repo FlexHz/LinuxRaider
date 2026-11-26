@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import (
     QMenu,
     QInputDialog,
     QCheckBox,
-    QLineEdit,
     QSizePolicy,
 )
 
@@ -27,9 +26,8 @@ from ..core.profiles import ProfileManager
 from ..engine.display_manager import DisplayManager
 from ..engine.window_watcher import (
     KWinWindowWatcher,
-    DEFAULT_GAME_PATTERNS,
-    parse_patterns,
-    window_matches_patterns,
+    GAME_WINDOW_TITLE,
+    is_game_window,
 )
 
 
@@ -168,17 +166,6 @@ QCheckBox::indicator {
 }
 QCheckBox::indicator:checked {
     background-color: #00f2fe;
-    border-color: #00f2fe;
-}
-QLineEdit {
-    background-color: #1a222d;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 6px 10px;
-    color: #f8fafc;
-    font-size: 12px;
-}
-QLineEdit:focus {
     border-color: #00f2fe;
 }
 """
@@ -364,25 +351,12 @@ class LinuxRaiderApp(QMainWindow):
         layout_auto.addWidget(lbl_auto)
 
         self.chk_auto_detect = QCheckBox(
-            "Activar Modo Juego solo cuando el juego tiene el foco", self
+            f'Activar Modo Juego solo cuando "{GAME_WINDOW_TITLE}" tiene el foco', self
         )
         self.chk_auto_detect.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_auto_detect.setChecked(bool(self.settings.get("auto_detect_enabled", True)))
         self.chk_auto_detect.toggled.connect(self._on_auto_detect_toggled)
         layout_auto.addWidget(self.chk_auto_detect)
-
-        row_patterns = QHBoxLayout()
-        lbl_patterns = QLabel("Ventana / Clase:", self)
-        lbl_patterns.setStyleSheet("color: #cbd5e1; font-size: 12px;")
-        row_patterns.addWidget(lbl_patterns)
-
-        self.input_patterns = QLineEdit(
-            self.settings.get("auto_detect_patterns", DEFAULT_GAME_PATTERNS), self
-        )
-        self.input_patterns.setPlaceholderText(DEFAULT_GAME_PATTERNS)
-        self.input_patterns.textChanged.connect(self._on_patterns_changed)
-        row_patterns.addWidget(self.input_patterns, stretch=1)
-        layout_auto.addLayout(row_patterns)
 
         self.lbl_auto_status = QLabel("Detección automática desactivada", self)
         self.lbl_auto_status.setStyleSheet("color: #94a3b8; font-size: 12px;")
@@ -437,6 +411,7 @@ class LinuxRaiderApp(QMainWindow):
 
     def _init_tray(self):
         self.tray = QSystemTrayIcon(self)
+        self.tray.setToolTip("LinuxRaider")
         icon_path = _get_icon_path()
         if os.path.exists(icon_path):
             icon = QIcon(icon_path)
@@ -648,17 +623,12 @@ class LinuxRaiderApp(QMainWindow):
 
     def _save_auto_settings(self):
         self.settings["auto_detect_enabled"] = self.chk_auto_detect.isChecked()
-        self.settings["auto_detect_patterns"] = self.input_patterns.text()
+        self.settings.pop("auto_detect_patterns", None)
         self.profile_mgr.save_settings(self.settings)
 
     def _on_auto_detect_toggled(self, _checked: bool):
         self._save_auto_settings()
         self._sync_auto_detect_state()
-
-    def _on_patterns_changed(self, _text: str):
-        self._save_auto_settings()
-        if self.chk_auto_detect.isChecked() and self.window_watcher.is_running:
-            self._on_active_window_changed(*self._last_focus_info)
 
     def _sync_auto_detect_state(self):
         if self.chk_auto_detect.isChecked():
@@ -676,8 +646,7 @@ class LinuxRaiderApp(QMainWindow):
             self.lbl_auto_status.setStyleSheet("color: #64748b; font-size: 12px;")
 
     def _is_game_focused(self, focus_info) -> bool:
-        patterns = parse_patterns(self.input_patterns.text())
-        return window_matches_patterns(*focus_info, patterns)
+        return is_game_window(*focus_info)
 
     def _on_active_window_changed(
         self, caption: str, resource_class: str, resource_name: str, desktop_file: str
@@ -719,6 +688,8 @@ class LinuxRaiderApp(QMainWindow):
 
 def run_gui():
     app = QApplication(sys.argv)
+    app.setApplicationName("LinuxRaider")
+    app.setApplicationDisplayName("LinuxRaider")
     app.setDesktopFileName("linuxraider")
     icon_path = _get_icon_path()
     if os.path.exists(icon_path):
